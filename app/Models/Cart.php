@@ -1,4 +1,3 @@
-// App\Models\Cart.php
 <?php
 
 namespace App\Models;
