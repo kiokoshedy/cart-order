@@ -21,3 +21,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+# Docker-related files
+docker-compose.override.yml
+*.log
