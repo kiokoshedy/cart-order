@@ -42,7 +42,7 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/react-app:latest .
-          docker push ${{ secrets.kiokos }}/react-app:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/react-app:latest
 
   deploy:
     runs-on: ubuntu-latest
