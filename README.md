@@ -29,10 +29,7 @@
      ```
 
 3. **Configure Environment**
-   - Copy the `.env.example` file to `.env`:
-     ```bash
-     cp .env.example .env
-     ```
+  
    - Update the `.env` file with your database and Redis credentials:
      ```dotenv
      DB_CONNECTION=pgsql
