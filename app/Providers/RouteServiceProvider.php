@@ -16,7 +16,7 @@ class RouteServiceProvider extends ServiceProvider
 {
     $this->routes(function () {
 
-        dd('RouteServiceProvider Loaded');
+        Log::info('RouteServiceProvider Loaded');
 
         Route::middleware('api')
             ->prefix('api') // Ensures the 'api' prefix is applied to your routes
