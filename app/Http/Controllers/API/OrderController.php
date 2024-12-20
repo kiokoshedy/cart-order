@@ -3,61 +3,59 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
+use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    /**
-     * Place an order from the user's cart.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function placeOrder()
+    public function placeOrder(Request $request)
     {
-        $userId = auth()->id();
+        $userId = $request->user()->id;
+
+        // Get user's cart items
         $cartItems = Cart::where('user_id', $userId)->get();
 
         if ($cartItems->isEmpty()) {
-            return response()->json(['message' => 'Cart is empty.'], 400);
+            return response()->json(['message' => 'Your cart is empty'], 400);
         }
 
-        $totalAmount = $cartItems->sum(function ($item) {
-            return $item->quantity * 10; // Assume each product has a fixed price of 10 for simplicity
-        });
+        // Calculate total amount
+        $totalAmount = $cartItems->reduce(function ($total, $item) {
+            return $total + ($item->quantity * $item->product->price);
+        }, 0);
 
+        // Create an order
         $order = Order::create([
             'user_id' => $userId,
             'status' => 'pending',
             'total_amount' => $totalAmount,
         ]);
 
+        // Add items to the order
         foreach ($cartItems as $cartItem) {
             OrderItem::create([
                 'order_id' => $order->id,
                 'product_id' => $cartItem->product_id,
                 'product_name' => $cartItem->product_name,
                 'quantity' => $cartItem->quantity,
-                'price' => 10, // Assume a fixed price of 10
+                'price' => $cartItem->product->price,
             ]);
-
-            $cartItem->delete();
         }
 
-        return response()->json(['order' => $order, 'message' => 'Order placed successfully.']);
+        // Clear the cart
+        Cart::where('user_id', $userId)->delete();
+
+        return response()->json(['message' => 'Order placed successfully', 'order' => $order]);
     }
 
-    /**
-     * Display the order history for the authenticated user.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getOrderHistory()
+    public function index(Request $request)
     {
-        $userId = auth()->id();
-        $orders = Order::with('items')->where('user_id', $userId)->get();
+        $userId = $request->user()->id;
 
-        return response()->json(['orders' => $orders]);
+        $orders = Order::where('user_id', $userId)->with('items')->get();
+
+        return response()->json($orders);
     }
 }

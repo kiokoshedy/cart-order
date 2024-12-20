@@ -3,59 +3,56 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Cart;
+use App\Models\Product;
+use Illuminate\Http\Request;
 
 class CartController extends Controller
 {
-    /**
-     * Display the user's cart.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $userId = auth()->id();
-        $cart = Cart::where('user_id', $userId)->get();
+        $userId = $request->user()->id;
 
-        return response()->json(['cart' => $cart]);
+        $cartItems = Cart::where('user_id', $userId)->get();
+
+        return response()->json($cartItems);
     }
 
-    /**
-     * Add an item to the cart.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'product_id' => 'required|integer',
-            'product_name' => 'required|string',
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $cart = Cart::create([
-            'user_id' => auth()->id(),
-            'product_id' => $request->product_id,
-            'product_name' => $request->product_name,
-            'quantity' => $request->quantity,
-        ]);
+        $userId = $request->user()->id;
+        $product = Product::findOrFail($validated['product_id']);
 
-        return response()->json(['cart' => $cart, 'message' => 'Item added to cart.']);
+        $cartItem = Cart::updateOrCreate(
+            [
+                'user_id' => $userId,
+                'product_id' => $product->id,
+            ],
+            [
+                'product_name' => $product->name,
+                'quantity' => $validated['quantity'],
+            ]
+        );
+
+        return response()->json(['message' => 'Item added to cart', 'cartItem' => $cartItem], 201);
     }
 
-    /**
-     * Remove an item from the cart.
-     *
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function destroy($id)
     {
-        $cart = Cart::where('id', $id)->where('user_id', auth()->id())->firstOrFail();
-        $cart->delete();
+        $userId = auth()->id();
+        $cartItem = Cart::where('user_id', $userId)->where('id', $id)->first();
 
-        return response()->json(['message' => 'Item removed from cart.']);
+        if (!$cartItem) {
+            return response()->json(['message' => 'Cart item not found'], 404);
+        }
+
+        $cartItem->delete();
+
+        return response()->json(['message' => 'Item removed from cart']);
     }
 }
