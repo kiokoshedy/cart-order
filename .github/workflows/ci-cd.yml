@@ -11,32 +11,88 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      # PostgreSQL Service
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: data
+          POSTGRES_DB: cart_order
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # PHP Setup
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           tools: composer
-          extensions: pdo, pdo_mysql, pdo_pgsql, mbstring, fileinfo
+          extensions: pdo, pdo_pgsql, mbstring, fileinfo
           coverage: none
 
-      - name: Install Dependencies
+      # Node.js Setup
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # Install Backend Dependencies
+      - name: Install PHP Dependencies
         run: composer install --no-progress --no-suggest --prefer-dist
 
+      # Install Frontend Dependencies
+      - name: Install Node.js Dependencies
+        run: npm install
+
+      # Environment Setup
       - name: Set up environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
 
-      - name: Generate application key
-        run: php artisan key:generate
+      # Wait for PostgreSQL
+      - name: Wait for PostgreSQL
+        run: |
+          sudo apt-get install -y netcat
+          until nc -z localhost 5432; do
+            sleep 1
+          done
 
+      # Database Migration
       - name: Run Migrations
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: cart_order
+          DB_USERNAME: postgres
+          DB_PASSWORD: data
         run: php artisan migrate --force
 
-      - name: Run Tests
+      # Run Backend Tests
+      - name: Run PHP Tests
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: cart_order
+          DB_USERNAME: postgres
+          DB_PASSWORD: data
         run: php artisan test
+
+      # Run Frontend Tests
+      - name: Run Frontend Tests
+        run: npm test
 
   build-and-push:
     runs-on: ubuntu-latest
@@ -45,12 +101,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Log in to DockerHub
       - name: Log in to DockerHub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Build and Push Docker Image
       - name: Build and Push Docker Image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/react-app:latest .
@@ -63,6 +121,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # # Deploy to DigitalOcean
       # - name: Deploy to DigitalOcean
       #   uses: appleboy/ssh-action@v0.1.3
       #   with:
