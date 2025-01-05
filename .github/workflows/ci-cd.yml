@@ -24,7 +24,7 @@ jobs:
         run: npm install
 
       - name: Run Tests
-        run: npm test
+        run: php artisan test
 
   build-and-push:
     runs-on: ubuntu-latest
