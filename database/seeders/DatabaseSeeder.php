@@ -33,7 +33,6 @@ class DatabaseSeeder extends Seeder
             ->has(OrderItem::factory()->count(5), 'items') // Each order has 5 items
             ->create();
 
-        // Additional seeding logic if needed
     }
 }
 
