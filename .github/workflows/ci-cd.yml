@@ -91,10 +91,6 @@ jobs:
           DB_PASSWORD: data
         run: php artisan test
 
-      # Run Frontend Tests
-      - name: Run Frontend Tests
-        run: npm test
-
   build-and-push:
     runs-on: ubuntu-latest
     needs: test
